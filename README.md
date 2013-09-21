@@ -1,9 +1,12 @@
 Modified the reading of files from synchronous to asynchronous
+
 Added some feedback about what's happening when doing a push
+
 TODO
-It needs to be installed globally and locally for it to work, mayby I
+
+* It needs to be installed globally and locally for it to work, mayby I
 am doing something wrong
-When called with no arguments it gives an error, not the help message.
+* When called with no arguments it gives an error, not the help message.
 
 # Installation
 
