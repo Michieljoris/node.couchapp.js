@@ -144,7 +144,7 @@ function createApp (doc, url, cb) {
   }
   
   var push = function (callback) {
-    console.log('Serializing.')
+    console.log('\nSerializing.')
     var doc = copy(app.doc);
     doc._attachments = copy(app.doc._attachments)
     delete doc.__attachments;
@@ -166,75 +166,82 @@ function createApp (doc, url, cb) {
     })
   }
   
-  app.push = function (callback) {
-    var revpos
-      , pending_dirs = 0
-      ;
+    app.push = function (callback) {
+        var revpos
+        , pending_dirs = 0
+        ;
     
-    console.log('Preparing.')
-    var doc = app.current;
-    for (i in app.doc) {
-      if (i !== '_rev') doc[i] = app.doc[i]
-    }
-    app.doc = doc;
-    app.prepare();
-    revpos = app.doc._rev ? parseInt(app.doc._rev.slice(0,app.doc._rev.indexOf('-'))) : 0;
+        console.log('Preparing.')
+        var doc = app.current;
+        for (i in app.doc) {
+            if (i !== '_rev') doc[i] = app.doc[i]
+        }
+        app.doc = doc;
+        app.prepare();
+        revpos = app.doc._rev ? parseInt(app.doc._rev.slice(0,app.doc._rev.indexOf('-'))) : 0;
     
-    var coffeeCompile;
-    var coffeeExt;
-    try{
-      coffeeCompile = require('coffee-script');
-      coffeeExt = /\.(lit)?coffee$/;
-    } catch(e){}
+        var coffeeCompile;
+        var coffeeExt;
+        try{
+            coffeeCompile = require('coffee-script');
+            coffeeExt = /\.(lit)?coffee$/;
+        } catch(e){}
 
-    app.doc.__attachments.forEach(function (att) {
-      watch.walk(att.root, {ignoreDotFiles:true}, function (err, files) {
-        pending_dirs += 1;
-        var pending_files = Object.keys(files).length;
-        for (i in files) { (function (f) {
-          fs.readFile(f, function (err, data) {
-            if(f.match(coffeeExt)){
-              data = new Buffer( coffeeCompile.compile(data.toString()) );
-              f = f.replace(coffeeExt,'.js');
-            }
-            f = f.replace(att.root, att.prefix || '').replace(/\\/g,"/");
-            if (f[0] == '/') f = f.slice(1)
-            if (!err) {
-              var d = data.toString('base64')
-                , md5 = crypto.createHash('md5')
-                , mime = mimetypes.lookup(path.extname(f).slice(1))
-                ;
-              md5.update(d)
-              md5 = md5.digest('hex')
-              if (app.doc.attachments_md5[f] && app.doc._attachments[f]) {
-                if (app.doc._attachments[f].revpos === app.doc.attachments_md5[f].revpos &&
-                    app.doc.attachments_md5[f].md5 === md5) {
-                  pending_files -= 1;
-                  if(pending_files === 0){
-                    pending_dirs -= 1;
-                    if(pending_dirs === 0){
-                      push(callback);
-                    }
-                  }
-                  return; // Does not need to be updated.
-                }
-              }
-              app.doc._attachments[f] = {data:d, content_type:mime};
-              app.doc.attachments_md5[f] = {revpos:revpos + 1, md5:md5};
-            }
-            pending_files -= 1
-            if(pending_files === 0){
-              pending_dirs -= 1;
-              if(pending_dirs === 0){
-                push(callback);
-              }
-            }
-          })
-        })(i)}
-      })
-    })
-    if (!app.doc.__attachments || app.doc.__attachments.length == 0) push(callback);
-  }  
+        app.doc.__attachments.forEach(function (att) {
+            watch.walk(
+                att.root, {ignoreDotFiles:true},
+                function (err, files) {
+                    pending_dirs += 1;
+                    var pending_files = Object.keys(files).length;
+                    
+                    console.log('Reading files:');
+                    for (var i in files) { (function (f) {
+                        if (files[f].isFile())  
+                        {
+                            var data = fs.readFileSync(f);
+                            process.stdout.write(".");
+                            if(f.match(coffeeExt)){
+                                data = new Buffer( coffeeCompile.compile(data.toString()) );
+                                f = f.replace(coffeeExt,'.js');
+                            }
+                            f = f.replace(att.root, att.prefix || '').replace(/\\/g,"/");
+                            if (f[0] == '/') f = f.slice(1)
+                            if (!err) {
+                                var d = data.toString('base64')
+                                , md5 = crypto.createHash('md5')
+                                , mime = mimetypes.lookup(path.extname(f).slice(1))
+                                ;
+                                md5.update(d)
+                                md5 = md5.digest('hex')
+                                if (app.doc.attachments_md5[f] && app.doc._attachments[f]) {
+                                    if (app.doc._attachments[f].revpos === app.doc.attachments_md5[f].revpos &&
+                                        app.doc.attachments_md5[f].md5 === md5) {
+                                        pending_files -= 1;
+                                        if(pending_files === 0){
+                                            pending_dirs -= 1;
+                                            if(pending_dirs === 0){
+                                                push(callback);
+                                            }
+                                        }
+                                        return; // Does not need to be updated.
+                                    }
+                                }
+                                app.doc._attachments[f] = {data:d, content_type:mime};
+                                app.doc.attachments_md5[f] = {revpos:revpos + 1, md5:md5};
+                            }
+                        }
+                        pending_files -= 1
+                        if(pending_files === 0){
+                            pending_dirs -= 1;
+                            if(pending_dirs === 0){
+                                push(callback);
+                            }
+                        }
+                    })(i)}
+                })
+        })
+        if (!app.doc.__attachments || app.doc.__attachments.length == 0) push(callback);
+    }  
   
   app.sync = function (callback) {
     // A few notes.
