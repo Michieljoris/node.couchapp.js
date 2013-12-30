@@ -3,10 +3,10 @@ Linux has limit on number of open files.
 
 Added some feedback about what's happening when doing a push.
 
+Install as below.
+
 TODO
 
-* It needs to be installed globally and locally for it to work, mayby I
-am doing something wrong
 * When called with no arguments it gives an error, not the help message.
 
 # Installation
