@@ -1,6 +1,7 @@
-Modified the reading of files from synchronous to asynchronous
+Modified the reading of files from asynchronous to synchronous, since
+Linux has limit on number of open files.
 
-Added some feedback about what's happening when doing a push
+Added some feedback about what's happening when doing a push.
 
 TODO
 
